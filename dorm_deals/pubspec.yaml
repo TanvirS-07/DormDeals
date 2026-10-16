@@ -73,6 +73,21 @@ flutter:
   assets:
     - assets/images/dorm_deals_logo.png
 
+  fonts:
+    - family: Geist
+      fonts:
+        - asset: assets/fonts/Geist-400.ttf
+        - asset: assets/fonts/Geist-500.ttf
+          weight: 500
+        - asset: assets/fonts/Geist-600.ttf
+          weight: 600
+    - family: BricolageGrotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-600.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque-700.ttf
+          weight: 700
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
