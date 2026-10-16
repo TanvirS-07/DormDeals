@@ -13,8 +13,17 @@ class AuthWidget extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+          return Scaffold(
+            body: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.asset(
+                  'assets/images/dorm_deals_logo.png',
+                  width: 64,
+                  height: 64,
+                ),
+              ),
+            ),
           );
         }
         if (snapshot.hasData) {
