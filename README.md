@@ -27,19 +27,26 @@ The app is designed as a MVP for a Mobile Application project. It shows how to a
 ## Screenshots
 
 ### Login
-![Login Screenshot](./dorm_deals/assets/images/login.PNG)
+![Login screen](./docs/screenshots/login.png)
 
-### Listings
-![Listings Screenshot](./dorm_deals/assets/images/Listings.PNG)
+### The board
+![Listings board](./docs/screenshots/board.png)
 
-### Create New Listing
-![Create New Listing Screenshot](./dorm_deals/assets/images/New%20Listings.PNG)
+### Selling an item
+![Create listing form](./docs/screenshots/sell-form.png)
+
+### On a phone
+<p>
+  <img src="./docs/screenshots/login-mobile.png" alt="Login on mobile" width="260">
+  <img src="./docs/screenshots/board-mobile.png" alt="Board on mobile" width="260">
+</p>
 
 ## Technical Details
 
 ### Project Structure
 
 - `lib/main.dart` starts Firebase and launches the app.
+- `lib/theme.dart` holds the colours, fonts and component styles.
 - `lib/dorm_deals.dart` contains the main DormDeals home screen and empty state.
 - `lib/firebase_options.dart` contains FlutterFire configuration.
 - `lib/models/listing.dart` contains the listing model, categories, validation, and Firestore conversion.
@@ -72,6 +79,33 @@ flutter run -d chrome
 **Run on an Android emulator or connected Android device:**
 
 flutter run
+
+**Run a local demo with the Firebase emulators:**
+
+This runs the app against the Firebase Local Emulator Suite instead of the live project, so it works offline and does not need a paid Firebase plan. You need the Firebase CLI, Java and Node installed.
+
+```
+cd .\dorm_dealsfirebase emulators:start
+```
+
+In a second terminal, seed a demo account and some listings:
+
+```
+node tool/seed_emulators.mjs
+```
+
+Then run the app pointed at the emulators:
+
+```
+flutter run -d chrome --dart-define=USE_EMULATORS=true
+```
+
+Log in with the demo account:
+
+- Email: `demo@dormdeals.test`
+- Password: `campus-demo-4821`
+
+This account only exists in the local emulator. Re-running the seed script resets the listings. On web the demo keeps you signed in only until the page reloads.
 
 **Run tests:**
 
