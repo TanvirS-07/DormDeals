@@ -1,11 +1,41 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:dorm_deals/models/listing.dart';
 import 'package:dorm_deals/state/listing_state.dart';
+import 'package:dorm_deals/theme.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:geolocator/geolocator.dart';
+
+// Phones get a bottom sheet, anything wider gets a centered dialog.
+void showListingEditor(BuildContext context, {Listing? existingListing}) {
+  final isPhone = MediaQuery.sizeOf(context).width < 600;
+
+  if (isPhone) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => NewListing(existingListing: existingListing),
+    );
+    return;
+  }
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: NewListing(existingListing: existingListing),
+      ),
+    ),
+  );
+}
 
 class NewListing extends StatefulWidget {
   const NewListing({super.key, this.existingListing});
@@ -25,10 +55,14 @@ class _NewListingState extends State<NewListing> {
   late final TextEditingController _pickupLocationController;
   late ItemCategory _chosenCategory;
   XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   bool _isSaving = false;
   double? _latitude;
   double? _longitude;
   bool _isGettingLocation = false;
+  String? _validationError;
+
+  bool get _isEditing => widget.existingListing != null;
 
   @override
   void dispose() {
@@ -94,6 +128,7 @@ class _NewListingState extends State<NewListing> {
 
     setState(() {
       _selectedImage = selectedImage;
+      _selectedImageBytes = imageBytes;
     });
   }
 
@@ -169,22 +204,11 @@ class _NewListingState extends State<NewListing> {
 
     final validationError = listing.validationError;
 
+    setState(() {
+      _validationError = validationError;
+    });
+
     if (validationError != null) {
-      showDialog(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Invalid Listing'),
-          content: Text(validationError),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
       return;
     }
 
@@ -209,7 +233,8 @@ class _NewListingState extends State<NewListing> {
       String? newlyUploadedImageUrl;
 
       if (_selectedImage != null) {
-        final imageBytes = await _selectedImage!.readAsBytes();
+        final imageBytes =
+            _selectedImageBytes ?? await _selectedImage!.readAsBytes();
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('listing_images')
@@ -269,112 +294,324 @@ class _NewListingState extends State<NewListing> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _fieldLabel(String text) {
     return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.ink,
+        ),
       ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleController,
-              maxLength: 50,
-              decoration: const InputDecoration(labelText: 'Listing Title'),
+    );
+  }
+
+  Widget _photoPicker() {
+    final existingImage = widget.existingListing?.image;
+    final hasPhoto = _selectedImageBytes != null || existingImage != null;
+
+    Widget preview;
+    if (_selectedImageBytes != null) {
+      preview = Image.memory(_selectedImageBytes!, fit: BoxFit.cover);
+    } else if (existingImage != null) {
+      preview = Image.network(
+        existingImage,
+        fit: BoxFit.cover,
+        webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+      );
+    } else {
+      preview = Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.hairline),
             ),
-            TextField(
-              controller: _descriptionController,
-              minLines: 1,
-              maxLines: 3,
-              maxLength: 300,
-              decoration: const InputDecoration(labelText: 'Description'),
+            child: const Icon(
+              Icons.add_photo_alternate_outlined,
+              color: AppColors.accent,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _priceController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                prefixText: '\$',
-                labelText: 'Price',
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _pickupLocationController,
-              decoration: const InputDecoration(labelText: 'Pickup Location'),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _isGettingLocation ? null : _getCurrentLocation,
-                  icon: _isGettingLocation
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.my_location),
-                  label: Text(
-                    _latitude == null || _longitude == null
-                        ? 'Use Current Location'
-                        : 'Location Set',
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Add Photo',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Optional, JPG or PNG under 5 MB',
+            style: TextStyle(fontSize: 12, color: AppColors.inkFaint),
+          ),
+        ],
+      );
+    }
+
+    return Material(
+      color: AppColors.sunken,
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: _isSaving ? null : _pickImage,
+        child: SizedBox(
+          height: 150,
+          width: double.infinity,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              preview,
+              if (hasPhoto)
+                Positioned(
+                  right: 10,
+                  bottom: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _selectedImageBytes != null
+                          ? 'Photo selected, tap to change'
+                          : 'Photo already uploaded, tap to change',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Text('Item Category:'),
-                const SizedBox(width: 12),
-                DropdownButton<ItemCategory>(
-                  value: _chosenCategory,
-                  items: ItemCategory.values
-                      .map(
-                        (category) => DropdownMenuItem(
-                          value: category,
-                          child: Text(category.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (newCategory) {
-                    if (newCategory == null) {
-                      return;
-                    }
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-                    setState(() {
-                      _chosenCategory = newCategory;
-                    });
+  Widget _locationButton() {
+    final hasLocation = _latitude != null && _longitude != null;
+
+    if (hasLocation && !_isGettingLocation) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: AppColors.accentSoft,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle, size: 18, color: AppColors.accent),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Location attached, buyers can open it in Maps',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.accentPressed,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _latitude = null;
+                  _longitude = null;
+                });
+              },
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        onPressed: _isGettingLocation ? null : _getCurrentLocation,
+        icon: _isGettingLocation
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.my_location, size: 18),
+        label: const Text('Use Current Location'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isEditing ? 'Edit listing' : 'Sell something',
+                    style: textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isEditing
+                        ? 'Changes show up on the board straight away.'
+                        : 'Students on campus will see this on the board.',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: AppColors.inkMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _photoPicker(),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Title'),
+                  TextField(
+                    controller: _titleController,
+                    maxLength: 50,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. COMP3130 notes, weeks 1-13',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _fieldLabel('Description'),
+                  TextField(
+                    controller: _descriptionController,
+                    minLines: 3,
+                    maxLines: 5,
+                    maxLength: 300,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: const InputDecoration(
+                      hintText: 'Condition, edition, what\'s included...',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _fieldLabel('Category'),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final category in ItemCategory.values)
+                        ChoiceChip(
+                          selected: _chosenCategory == category,
+                          onSelected: (_) {
+                            setState(() {
+                              _chosenCategory = category;
+                            });
+                          },
+                          avatar: Icon(
+                            categoryIcons[category],
+                            size: 16,
+                            color: _chosenCategory == category
+                                ? Colors.white
+                                : AppColors.inkMuted,
+                          ),
+                          label: Text(category.label),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Price'),
+                  SizedBox(
+                    width: 200,
+                    child: TextField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        prefixText: '\$ ',
+                        hintText: '0.00',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _fieldLabel('Pickup location'),
+                  TextField(
+                    controller: _pickupLocationController,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Library foyer, level 2',
+                      prefixIcon: Icon(Icons.location_on_outlined, size: 20),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _locationButton(),
+                ],
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutCubic,
+            child: _validationError == null
+                ? const SizedBox(width: double.infinity)
+                : Container(
+                    margin: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.dangerSoft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 18,
+                          color: AppColors.danger,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _validationError!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.danger,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
                   },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.inkMuted,
+                  ),
+                  child: const Text('Cancel'),
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.photo_library),
-                  label: const Text('Add Photo'),
-                ),
-                const SizedBox(width: 12),
-                if (_selectedImage != null) const Text('Photo selected'),
-                if (_selectedImage == null &&
-                    widget.existingListing?.image != null)
-                  const Text('Photo already uploaded'),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
+                const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: _isSaving ? null : _saveListing,
                   child: _isSaving
@@ -383,23 +620,12 @@ class _NewListingState extends State<NewListing> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(
-                          widget.existingListing == null
-                              ? 'Create Listing'
-                              : 'Save Changes',
-                        ),
-                ),
-                const SizedBox(width: 12),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
+                      : Text(_isEditing ? 'Save Changes' : 'Create Listing'),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

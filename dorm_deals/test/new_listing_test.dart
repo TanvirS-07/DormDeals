@@ -33,10 +33,11 @@ void main() {
   testWidgets('NewListing shows empty form for a new listing', (tester) async {
     await tester.pumpWidget(createTestWidget());
 
-    expect(find.text('Listing Title'), findsOneWidget);
+    expect(find.text('Title'), findsOneWidget);
     expect(find.text('Description'), findsOneWidget);
+    expect(find.text('Category'), findsOneWidget);
     expect(find.text('Price'), findsOneWidget);
-    expect(find.text('Pickup Location'), findsOneWidget);
+    expect(find.text('Pickup location'), findsOneWidget);
     expect(find.text('Create Listing'), findsOneWidget);
   });
 
@@ -48,7 +49,6 @@ void main() {
     await tester.tap(find.widgetWithText(ElevatedButton, 'Create Listing'));
     await tester.pump();
 
-    expect(find.text('Invalid Listing'), findsOneWidget);
     expect(
       find.text('Give your listing a clearer title, like "COMP3130 Notes".'),
       findsOneWidget,
