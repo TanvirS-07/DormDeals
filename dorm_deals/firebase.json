@@ -1,1 +1,45 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"dormdeals-5b396","appId":"1:760263151467:android:189a102cb2c4a519f4c62e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"dormdeals-5b396","configurations":{"android":"1:760263151467:android:189a102cb2c4a519f4c62e","ios":"1:760263151467:ios:00e4aa3283b9dc45f4c62e","web":"1:760263151467:web:c1b6a8517ca2bbd6f4c62e"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "dormdeals-5b396",
+          "appId": "1:760263151467:android:189a102cb2c4a519f4c62e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "dormdeals-5b396",
+          "configurations": {
+            "android": "1:760263151467:android:189a102cb2c4a519f4c62e",
+            "ios": "1:760263151467:ios:00e4aa3283b9dc45f4c62e",
+            "web": "1:760263151467:web:c1b6a8517ca2bbd6f4c62e"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "singleProjectMode": true
+  }
+}
