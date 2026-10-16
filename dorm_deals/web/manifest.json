@@ -1,11 +1,11 @@
 {
-    "name": "dorm_deals",
-    "short_name": "dorm_deals",
+    "name": "DormDeals",
+    "short_name": "DormDeals",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F5F3EE",
+    "theme_color": "#1E5B45",
+    "description": "A campus-only marketplace for textbooks, notes and uni gear.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
